@@ -11,25 +11,30 @@ npm install
 cp config.example.json config.json
 ```
 
-Edit `config.json` with your account names:
+Edit `config.json` with your account details:
 
 ```json
 {
   "curlFile": "curl.txt",
-  "outputDir": "./data",
-  "cutoffDate": "2021-01",
-  "accounts": ["YOUR EXACT ACCOUNT NAME"]
+  "accounts": [
+    {
+      "name": "YOUR EXACT ACCOUNT NAME",
+      "outputDir": "./data",
+      "cutoffDate": "2021-01"
+    }
+  ]
 }
 ```
 
 | Field | Description |
 |---|---|
 | `curlFile` | Path to a file containing a copied cURL command (see below) |
-| `outputDir` | Where to save downloaded files. Supports `~` for home directory |
-| `cutoffDate` | Optional. Earliest month to sync, in YYYY-MM format. Defaults to 5 years back. See [Data cutoff limits](#data-cutoff-limits) below |
-| `accounts` | Optional. List of account names to sync. Omit to sync all accounts. Run `npm run discover` to see available account names |
+| `accounts` | Array of account configs. Each entry has `name` (required), `outputDir` (required), and `cutoffDate` (optional). Run `npm run discover` to see available account names |
+| `accounts[].name` | Account name as it appears in Metro Bank's system |
+| `accounts[].outputDir` | Where to save downloaded files for this account. Supports `~` for home directory |
+| `accounts[].cutoffDate` | Optional. Earliest month to sync, in YYYY-MM format. Defaults to 5 years back. See [Data cutoff limits](#data-cutoff-limits) below |
 
-Account names, IDs, currency codes, and entity IDs are all auto-discovered from the API — you just need the account name as it appears in Metro Bank's system.
+Each account can have its own output directory and cutoff date, allowing you to funnel data from different accounts to different locations. Account IDs, currency codes, and entity IDs are all auto-discovered from the API.
 
 ## Getting the cURL command
 

@@ -43,97 +43,95 @@ function sleep(ms: number): Promise<void> {
 
 // --- Sync logic ---
 
-async function syncPdfs(api: MetroBankApi, accounts: Account[], outputDir: string, cutoff: Date, force: boolean) {
+async function syncPdfs(api: MetroBankApi, account: Account, outputDir: string, cutoff: Date, force: boolean) {
   const currentMonth = formatYYYYMM(new Date());
   const cutoffMonth = formatYYYYMM(cutoff);
+  const { entityId, accountId, accountName, currencyCode } = account;
 
-  for (const { entityId, accountId, accountName, currencyCode } of accounts) {
-    const dir = path.join(outputDir, 'statements', currencyCode);
-    fs.mkdirSync(dir, { recursive: true });
+  const dir = path.join(outputDir, 'statements', currencyCode);
+  fs.mkdirSync(dir, { recursive: true });
 
-    console.log(`Syncing PDF statements for ${accountName} (${currencyCode})...`);
-    const { documentsList } = await api.listDocuments(entityId, accountId);
+  console.log(`Syncing PDF statements for ${accountName} (${currencyCode})...`);
+  const { documentsList } = await api.listDocuments(entityId, accountId);
 
-    for (const item of documentsList) {
-      if (item.documentType !== 'monthlyStatement') continue;
+  for (const item of documentsList) {
+    if (item.documentType !== 'monthlyStatement') continue;
 
-      const date = parseMonthYear(item.monthYear);
-      const month = formatYYYYMM(date);
+    const date = parseMonthYear(item.monthYear);
+    const month = formatYYYYMM(date);
 
-      if (month === currentMonth) continue;
-      if (month < cutoffMonth) break;
+    if (month === currentMonth) continue;
+    if (month < cutoffMonth) break;
 
-      const filePath = path.join(dir, `${formatYYYYMMDD(date)}-${currencyCode}-statement.pdf`);
+    const filePath = path.join(dir, `${formatYYYYMMDD(date)}-${currencyCode}-statement.pdf`);
 
-      if (!force && fs.existsSync(filePath)) {
-        console.log(`  ${item.monthYear} already exists, done`);
-        break;
-      }
-
-      console.log(`  ${item.monthYear}`);
-      const { pdfContent } = await api.downloadDocument(entityId, accountId, item.docId);
-      const pdfBuffer = Buffer.from(pdfContent, 'base64');
-
-      fs.writeFileSync(filePath, pdfBuffer);
-      const mtime = endOfMonth(date);
-      fs.utimesSync(filePath, mtime, mtime);
+    if (!force && fs.existsSync(filePath)) {
+      console.log(`  ${item.monthYear} already exists, done`);
+      break;
     }
+
+    console.log(`  ${item.monthYear}`);
+    const { pdfContent } = await api.downloadDocument(entityId, accountId, item.docId);
+    const pdfBuffer = Buffer.from(pdfContent, 'base64');
+
+    fs.writeFileSync(filePath, pdfBuffer);
+    const mtime = endOfMonth(date);
+    fs.utimesSync(filePath, mtime, mtime);
   }
 }
 
-async function syncCsvs(api: MetroBankApi, accounts: Account[], outputDir: string, cutoff: Date, startMonth: Date, force: boolean) {
-  for (const { entityId, accountId, accountName, currencyCode } of accounts) {
-    const dir = path.join(outputDir, 'transactions', currencyCode);
-    fs.mkdirSync(dir, { recursive: true });
+async function syncCsvs(api: MetroBankApi, account: Account, outputDir: string, cutoff: Date, startMonth: Date, force: boolean) {
+  const { entityId, accountId, accountName, currencyCode } = account;
+  const dir = path.join(outputDir, 'transactions', currencyCode);
+  fs.mkdirSync(dir, { recursive: true });
 
-    console.log(`Syncing CSV transactions for ${accountName} (${currencyCode})...`);
+  console.log(`Syncing CSV transactions for ${accountName} (${currencyCode})...`);
 
-    let current = new Date(startMonth);
-    while (current >= cutoff) {
-      const startDate = formatYYYYMMDD(current);
-      const lastDay = new Date(current.getFullYear(), current.getMonth() + 1, 0);
-      const endDate = formatYYYYMMDD(lastDay);
-      const filePath = path.join(dir, `${startDate}-${currencyCode}-transactions.csv`);
+  let current = new Date(startMonth);
+  while (current >= cutoff) {
+    const startDate = formatYYYYMMDD(current);
+    const lastDay = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+    const endDate = formatYYYYMMDD(lastDay);
+    const filePath = path.join(dir, `${startDate}-${currencyCode}-transactions.csv`);
 
-      if (!force && fs.existsSync(filePath)) {
-        console.log(`  ${startDate} already exists, done`);
+    if (!force && fs.existsSync(filePath)) {
+      console.log(`  ${startDate} already exists, done`);
+      break;
+    }
+
+    await sleep(RATE_LIMIT_MS);
+    console.log(`  ${startDate} to ${endDate}`);
+
+    try {
+      const data = await api.downloadTransactions({
+        accountId,
+        currencyCode,
+        transactionStartDate: startDate,
+        transactionEndDate: endDate,
+        entityId,
+      });
+
+      if (data.exp) throw new Error(`Session expired: ${JSON.stringify(data)}`);
+
+      if (data.fileContent) {
+        const csvData = Buffer.from(data.fileContent, 'base64').toString('utf8').trim();
+        fs.writeFileSync(filePath, csvData, 'utf8');
+        const mtime = endOfMonth(current);
+        fs.utimesSync(filePath, mtime, mtime);
+      } else {
+        console.log(`    No data`);
+      }
+    } catch (err) {
+      const msg = (err as Error).message;
+      if (msg.includes('HTTP 500')) {
+        console.log(`    Server error — likely reached history limit, stopping CSV sync for ${accountName}`);
         break;
       }
-
-      await sleep(RATE_LIMIT_MS);
-      console.log(`  ${startDate} to ${endDate}`);
-
-      try {
-        const data = await api.downloadTransactions({
-          accountId,
-          currencyCode,
-          transactionStartDate: startDate,
-          transactionEndDate: endDate,
-          entityId,
-        });
-
-        if (data.exp) throw new Error(`Session expired: ${JSON.stringify(data)}`);
-
-        if (data.fileContent) {
-          const csvData = Buffer.from(data.fileContent, 'base64').toString('utf8').trim();
-          fs.writeFileSync(filePath, csvData, 'utf8');
-          const mtime = endOfMonth(current);
-          fs.utimesSync(filePath, mtime, mtime);
-        } else {
-          console.log(`    No data`);
-        }
-      } catch (err) {
-        const msg = (err as Error).message;
-        if (msg.includes('HTTP 500')) {
-          console.log(`    Server error — likely reached history limit, stopping CSV sync for ${accountName}`);
-          break;
-        }
-        throw err;
-      }
-
-      // Move to previous month
-      current = new Date(current.getFullYear(), current.getMonth() - 1, 1);
+      throw err;
     }
+
+    // Move to previous month
+    current = new Date(current.getFullYear(), current.getMonth() - 1, 1);
   }
 }
 
@@ -170,39 +168,54 @@ async function main() {
   const config = loadConfig(configPath);
 
   const curlFile = resolvePath(config.curlFile);
-  const outputDir = resolvePath(config.outputDir);
 
   const curlText = fs.readFileSync(curlFile, 'utf8');
   const auth = parseCurl(curlText);
   const api = new MetroBankApi(auth);
 
   console.log('Discovering accounts...');
-  const accounts = await api.discoverAccounts(config.accounts);
+  const discoveredAccounts = await api.discoverAccounts();
+  const discoveredNames = discoveredAccounts.map(a => a.accountName);
 
-  console.log(`Output: ${path.resolve(outputDir)}`);
-  console.log(`Accounts:`);
-  for (const a of accounts) {
-    console.log(`  - ${a.accountName} (${a.currencyCode}, ${a.accountId})`);
+  const unknownNames = config.accounts
+    .filter(ac => !discoveredAccounts.some(d => d.accountName.toLowerCase() === ac.name.toLowerCase()))
+    .map(ac => ac.name);
+  if (unknownNames.length > 0) {
+    throw new Error(
+      `Unknown account(s) in config: ${unknownNames.map(n => `"${n}"`).join(', ')}\n` +
+      `Valid account names: ${discoveredNames.map(n => `"${n}"`).join(', ')}`
+    );
   }
 
-  const now = new Date();
-  let cutoff: Date;
-  let startMonth: Date;
+  for (const acctConfig of config.accounts) {
+    const account = discoveredAccounts.find(
+      a => a.accountName.toLowerCase() === acctConfig.name.toLowerCase()
+    )!;
 
-  if (monthArg) {
-    cutoff = new Date(monthArg + '-01');
-    startMonth = new Date(cutoff);
-    console.log(`Month: ${formatYYYYMM(cutoff)}\n`);
-  } else {
-    cutoff = config.cutoffDate
-      ? new Date(config.cutoffDate + '-01')
-      : new Date(now.getFullYear() - DEFAULT_MAX_HISTORY_YEARS, now.getMonth(), 1);
-    startMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    console.log(`Cutoff: ${formatYYYYMM(cutoff)}\n`);
+    const outputDir = resolvePath(acctConfig.outputDir);
+    console.log(`\n=== ${account.accountName} (${account.currencyCode}) ===`);
+    console.log(`Output: ${path.resolve(outputDir)}`);
+
+    const now = new Date();
+    let cutoff: Date;
+    let startMonth: Date;
+
+    if (monthArg) {
+      cutoff = new Date(monthArg + '-01');
+      startMonth = new Date(cutoff);
+      console.log(`Month: ${formatYYYYMM(cutoff)}`);
+    } else {
+      cutoff = acctConfig.cutoffDate
+        ? new Date(acctConfig.cutoffDate + '-01')
+        : new Date(now.getFullYear() - DEFAULT_MAX_HISTORY_YEARS, now.getMonth(), 1);
+      startMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      console.log(`Cutoff: ${formatYYYYMM(cutoff)}`);
+    }
+
+    console.log('');
+    await syncCsvs(api, account, outputDir, cutoff, startMonth, force);
+    await syncPdfs(api, account, outputDir, cutoff, force);
   }
-
-  await syncCsvs(api, accounts, outputDir, cutoff, startMonth, force);
-  await syncPdfs(api, accounts, outputDir, cutoff, force);
 
   console.log('\nDone.');
 }

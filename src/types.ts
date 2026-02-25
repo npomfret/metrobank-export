@@ -11,13 +11,16 @@ export interface Account {
   currencyCode: string;
 }
 
-export interface SyncConfig {
-  curlFile: string;
+export interface AccountConfig {
+  name: string;
   outputDir: string;
-  /** Account names to sync. If omitted, syncs all accounts. */
-  accounts?: string[];
   /** Earliest month to sync, e.g. "2020-01". Defaults to 5 years ago. */
   cutoffDate?: string;
+}
+
+export interface SyncConfig {
+  curlFile: string;
+  accounts: AccountConfig[];
 }
 
 // --- API response shapes ---

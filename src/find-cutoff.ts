@@ -84,7 +84,8 @@ async function findStatementCutoff(entityId: string, accountId: string): Promise
 
 async function main() {
   console.log('Discovering accounts...');
-  const accounts = await api.discoverAccounts(config.accounts);
+  const accountNames = config.accounts.map(a => a.name);
+  const accounts = await api.discoverAccounts(accountNames);
 
   const now = new Date();
   const lo = (now.getFullYear() - 10) * 12 + now.getMonth();

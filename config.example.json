@@ -1,0 +1,6 @@
+{
+  "curlFile": "curl.txt",
+  "outputDir": "./data",
+  "cutoffDate": "2021-01",
+  "accounts": ["YOUR EXACT ACCOUNT NAME"]
+}

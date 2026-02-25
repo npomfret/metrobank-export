@@ -1,0 +1,12 @@
+curl.txt
+config.json
+.DS_Store
+.idea/
+
+/tmp
+/out-tsc
+/dist
+/data
+
+/node_modules
+npm-debug.log*

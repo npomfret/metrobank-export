@@ -1,0 +1,18 @@
+{
+  "name": "metrobank-export",
+  "version": "1.0.0",
+  "description": "Download PDF statements and CSV transaction data from Metro Bank",
+  "scripts": {
+    "sync": "tsx src/index.ts",
+    "test-month": "tsx src/index.ts --month",
+    "discover": "tsx src/discover.ts",
+    "find-cutoff": "tsx src/find-cutoff.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.5.3"
+  },
+  "private": true
+}

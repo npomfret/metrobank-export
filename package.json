@@ -7,10 +7,12 @@
     "test-month": "tsx src/index.ts --month",
     "discover": "tsx src/discover.ts",
     "find-cutoff": "tsx src/find-cutoff.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format": "dprint fmt"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "dprint": "^0.50.2",
     "tsx": "^4.21.0",
     "typescript": "^5.5.3"
   },

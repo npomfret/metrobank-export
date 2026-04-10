@@ -209,7 +209,7 @@ async function main() {
         ? new Date(acctConfig.cutoffDate + '-01')
         : new Date(now.getFullYear() - DEFAULT_MAX_HISTORY_YEARS, now.getMonth(), 1);
       startMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      console.log(`Cutoff: ${formatYYYYMM(cutoff)}`);
+      console.log(`Range: ${formatYYYYMM(cutoff)} to ${formatYYYYMM(startMonth)} (current month ${formatYYYYMM(now)} skipped)`);
     }
 
     console.log('');

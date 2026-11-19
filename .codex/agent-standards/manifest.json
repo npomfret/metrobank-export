@@ -153,7 +153,7 @@
     },
     ".codex/agent-standards/plugins/workflow/.claude-plugin/plugin.json": {
       "source": "plugin:workflow@npomfret/.claude-plugin/plugin.json",
-      "sha256": "d2ffea53be1886c0ae4a9ef92fecb39ef2179a5763f1dcd0bd9b896345a4d17d",
+      "sha256": "5a3e43e5562698562ce7115b831c5ace74fe3afb93f67056bef6c476c807165c",
       "link": false,
       "executable": false
     },
@@ -165,7 +165,7 @@
     },
     ".codex/agent-standards/plugins/workflow/skills/git-delivery/SKILL.md": {
       "source": "plugin:workflow@npomfret/skills/git-delivery/SKILL.md",
-      "sha256": "bc99ce906c1e8dcae57415b372b46d77525b03dd0cb2eec9cbf82f1e39e063fa",
+      "sha256": "44ae644ed203969afbd5822402bc17a6e30b6ea3f93e63db1a757034510048ee",
       "link": false,
       "executable": false
     },
@@ -201,7 +201,7 @@
     },
     ".codex/hooks.json": {
       "source": "templates/codex-hooks.py",
-      "sha256": "55a8f31d64f14cd7c242333cdf001b012f4150122691430a77cf46edca25e038",
+      "sha256": "51209a7fd30465527893ca404d026a071387ac54c8d00b2f9aa53a74ba367746",
       "link": false,
       "executable": false
     },
